@@ -1,0 +1,19 @@
+FROM ros:humble-ros-base-jammy
+
+RUN apt-get update && apt-get install -y \
+    ros-humble-moveit ros-humble-ros2-control ros-humble-ros2-controllers \
+    ros-humble-rmw-cyclonedds-cpp ros-humble-xacro ros-humble-joint-state-publisher-gui \
+    python3-colcon-common-extensions python3-pip ccache ninja-build git \
+    ros-humble-ur-description ros-humble-ur-moveit-config \
+    ros-humble-ur-robot-driver \ 
+    && rm -rf /var/lib/apt/lists/*
+    
+
+# Team-wide RMW decision (see docs: DDS discovery across container/host/rover)
+ENV RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+ENV ROS_DOMAIN_ID=42
+
+RUN echo 'source /opt/ros/humble/setup.bash' >> /root/.bashrc
+WORKDIR /ws
+
+

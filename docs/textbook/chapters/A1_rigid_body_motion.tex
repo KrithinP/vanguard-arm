@@ -1,0 +1,123 @@
+\chapter{Rigid-Body Motion}
+\label{ch:rigid}
+
+Everything the arm does is described by rotations and translations of rigid bodies. This
+chapter is the vocabulary; chapters~\ref{ch:fk} and \ref{ch:jac} are the grammar. Reference:
+Modern Robotics ch.~3 (Lynch \& Park); read this chapter alongside it.
+
+\section{Rotations}
+
+A rotation matrix $R \in SO(3)$ is a $3\times3$ matrix satisfying
+\[
+  R^\top R = I, \qquad \det R = +1 .
+\]
+Its columns are the axes of the rotated frame expressed in the reference frame — that reading
+solves most sign confusions. Rotations compose by multiplication and \emph{do not commute}:
+rotating $90^\circ$ about $\hat z$ then $\hat x$ lands differently than $\hat x$ then $\hat z$.
+Order is meaning: $R_{ab}R_{bc} = R_{ac}$ (subscript chains cancel like units).
+
+\paragraph{Representations we will actually touch.}
+\begin{itemize}
+  \item \textbf{Rotation matrix} — what TF2 and all math uses internally; 9 numbers, 3 DoF.
+  \item \textbf{Axis--angle} $(\hat\omega, \theta)$ — Rodrigues' formula reconstructs $R$:
+  \begin{equation}
+    R = I + \sin\theta\,[\hat\omega] + (1-\cos\theta)\,[\hat\omega]^2 ,
+    \label{eq:rodrigues}
+  \end{equation}
+  where $[\hat\omega]$ is the skew-symmetric matrix of $\hat\omega$
+  ($[\hat\omega]x = \hat\omega \times x$). This \emph{is} the exponential map:
+  $R = e^{[\hat\omega]\theta}$.
+  \item \textbf{Unit quaternion} $q = \big(\cos\tfrac\theta2,\; \hat\omega\sin\tfrac\theta2\big)$
+  — 4 numbers, no singularities, what ROS messages carry (\texttt{x,y,z,w} order in
+  \texttt{geometry\_msgs}, $w$ last — a classic bug source). $q$ and $-q$ are the same rotation
+  (double cover).
+  \item \textbf{Euler/RPY} — human-readable, gimbal-locked, used only at config-file boundaries
+  (URDF \texttt{rpy=}). Never do math in RPY.
+\end{itemize}
+
+\begin{example}[Quaternion of a $90^\circ$ yaw]
+$\hat\omega = (0,0,1)$, $\theta = \pi/2$:
+$q = (\cos 45^\circ,\, 0,0,\sin 45^\circ) = (\tfrac{\sqrt2}{2}, 0, 0, \tfrac{\sqrt2}{2})$.
+In ROS message order: $x{=}0,\, y{=}0,\, z{=}0.7071,\, w{=}0.7071$.
+\end{example}
+
+\section{Homogeneous transforms}
+
+Pose = rotation + translation, packed as $T \in SE(3)$:
+\[
+  T = \begin{bmatrix} R & p \\ 0 & 1 \end{bmatrix}, \qquad
+  T^{-1} = \begin{bmatrix} R^\top & -R^\top p \\ 0 & 1 \end{bmatrix} .
+\]
+Composition chains frames: $T_{ab}\,T_{bc} = T_{ac}$. This subscript-cancellation rule is the
+whole of TF2: \texttt{lookup\_transform(a, c)} multiplies the chain of stored transforms for
+you.
+
+\begin{keyresult}
+Never invert by transposing the whole $T$; only $R$ transposes. The translation picks up
+$-R^\top p$.
+\end{keyresult}
+
+\begin{example}[Wrist camera to base]
+The wrist camera sees an ArUco tag at $T_{\text{cam,tag}}$. The arm reports
+$T_{\text{base,tool0}}$; hand--eye calibration gave $T_{\text{tool0,cam}}$. Where is the tag
+for the planner?
+\[
+  T_{\text{base,tag}} \;=\; T_{\text{base,tool0}}\; T_{\text{tool0,cam}}\; T_{\text{cam,tag}} .
+\]
+Every panel-servicing skill begins with exactly this triple product. A $2$\,mm error in the
+middle factor (calibration) shifts every tag estimate by $2$\,mm --- which is why
+chapter~B1 (hand--eye) exists.
+\end{example}
+
+\section{Twists and screws (the 60-second version)}
+
+Angular and linear velocity pack into a twist $\mathcal V = (\omega, v) \in \mathbb R^6$. A
+unit screw axis $\mathcal S = (\hat\omega,\, v)$ with $v = -\hat\omega \times q$ (for a
+revolute joint through point $q$) generalizes ``rotation about a line.'' Matrix exponentials of
+screws produce rigid displacements: $T = e^{[\mathcal S]\theta}$. That single fact powers the
+next chapter's forward kinematics. For deeper treatment: MR~ch.~3.3; for the Lie-group view,
+Sol\`a et al.\ (arXiv:1812.01537) --- read it \emph{after} this clicks numerically.
+
+\section{Problems}
+
+\begin{problem}
+Show that $R_z(90^\circ)R_x(90^\circ) \neq R_x(90^\circ)R_z(90^\circ)$ by tracking where the
+unit vector $\hat x$ lands under each. (No matrices needed --- rotate a pen.)
+\end{problem}
+\begin{answer}
+First ordering (apply $R_x$ first, then $R_z$... careful: in a fixed frame, the \emph{left}
+matrix acts last): $R_z R_x$ sends $\hat x \to R_x \hat x = \hat x \to R_z \hat x = \hat y$.
+The other ordering sends $\hat x \to \hat y \to$ (rotation about $\hat x$) $\to \hat z$.
+$\hat y \neq \hat z$: non-commutative.
+\end{answer}
+
+\begin{problem}
+Using \eqref{eq:rodrigues}, compute $R$ for $\hat\omega = (0,0,1)$, $\theta = 90^\circ$, and
+verify it maps $\hat x \to \hat y$.
+\end{problem}
+\begin{answer}
+$[\hat\omega] = \begin{bmatrix}0&-1&0\\1&0&0\\0&0&0\end{bmatrix}$, $\sin\theta = 1$,
+$1-\cos\theta = 1$, $[\hat\omega]^2 = \mathrm{diag}(-1,-1,0)$. Sum:
+$R = \begin{bmatrix}0&-1&0\\1&0&0\\0&0&1\end{bmatrix}$; first column $= \hat y$. \qedhere
+\end{answer}
+
+\begin{problem}
+$T_{\text{base,tool0}}$ has $R = R_z(90^\circ)$ and $p = (0.4, 0.1, 0.5)$. Compute
+$T^{-1}$ and state what frame relationship it represents.
+\end{problem}
+\begin{answer}
+$R^\top = R_z(-90^\circ)$;
+$-R^\top p = -R_z(-90^\circ)(0.4,0.1,0.5) = -(0.1, -0.4, 0.5) = (-0.1, 0.4, -0.5)$.
+It is $T_{\text{tool0,base}}$: the base pose as seen from the tool.
+\end{answer}
+
+\begin{problem}[transfer]
+Your teammate reports the gripper quaternion as $(0.7071, 0, 0, 0.7071)$ ``in ROS order.''
+What are the two possible rotations they might mean, and how do you disambiguate?
+\end{problem}
+\begin{answer}
+If $(x,y,z,w)$: $x = 0.7071, w = 0.7071$ → $90^\circ$ about $\hat x$. If they wrote $(w,x,y,z)$:
+$90^\circ$ about $\hat z$. Disambiguate by convention-checking against a known pose (or just
+\texttt{ros2 topic echo} and compare with RViz). Adopted team rule: always name the convention
+when writing quaternions down.
+\end{answer}

@@ -1,0 +1,18 @@
+# build artifacts
+ros2_ws/build/
+ros2_ws/install/
+ros2_ws/log/
+# docs/textbook/main.pdf tracked: built artifact, useful for public readers
+*.aux *.log *.toc
+
+# AIOS knowledge layer (symlink into Jarvis vault, not part of this repo)
+graphify-out
+
+# local
+.venv/
+__pycache__/
+
+# not for public repo: session exports + third-party rulebook PDFs (kept on disk, linked in PLAN.md)
+docs/textbook/*.txt
+*.pdf
+!docs/textbook/main.pdf

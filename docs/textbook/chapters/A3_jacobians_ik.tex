@@ -1,0 +1,149 @@
+\chapter{Jacobians, Singularities, and Inverse Kinematics}
+\label{ch:jac}
+
+Chapter~\ref{ch:fk} maps joint angles to tool pose. This chapter differentiates that map ---
+and inverts it. Teleop jogging, MoveIt's Cartesian goals, visual servoing (Block C), and the
+straight-elbow experiment from chapter~\ref{ch:controllers} all live here. Reference: MR
+ch.~5--6.
+
+\section{The Jacobian}
+
+Differentiating FK gives a linear map from joint velocities to tool twist:
+\begin{equation}
+  \mathcal V = J(\theta)\,\dot\theta, \qquad J \in \mathbb R^{6\times n}.
+\end{equation}
+Column $i$ answers: \emph{if only joint $i$ moves at unit speed, how does the tool move, at
+this configuration?} For a revolute joint currently on axis $\hat\omega_i$ through point
+$q_i$, with tool at $p$:
+\[
+  J_i = \begin{bmatrix} \hat\omega_i \\ \hat\omega_i \times (p - q_i) \end{bmatrix}.
+\]
+The linear part is lever-arm physics: velocity $=$ axis $\times$ arm. Long arm, fast tip ---
+the same reason the shoulder joint dominates our reach envelope and the interface spec's
+payload-at-extension clause exists.
+
+\subsection{Worked example: the 2R Jacobian}
+
+Differentiate \eqref{eq:2rfk} directly:
+\begin{equation}
+  J(\theta) = \begin{bmatrix}
+    -l_1 s_1 - l_2 s_{12} & -l_2 s_{12} \\
+     l_1 c_1 + l_2 c_{12} &  l_2 c_{12}
+  \end{bmatrix},
+  \qquad \det J = l_1 l_2 \sin\theta_2 .
+  \label{eq:2rjac}
+\end{equation}
+($s_{12} = \sin(\theta_1{+}\theta_2)$, etc.)
+
+\section{Singularities}
+
+$\det J = l_1 l_2 \sin\theta_2$ vanishes at $\theta_2 = 0$ or $\pi$: the \textbf{straight (or
+folded) elbow}. There the two columns become parallel --- both joints can only move the tip
+\emph{perpendicular} to the arm; no joint motion produces velocity \emph{along} the arm.
+Consequences, in increasing order of practical pain:
+\begin{enumerate}
+  \item A whole Cartesian direction is instantaneously unreachable.
+  \item Near (not at) the singularity, reaching the ``hard'' direction requires enormous
+  $\dot\theta$: $\dot\theta = J^{-1}v$ blows up as $\det J \to 0$.
+  \item Numerical IK oscillates or explodes if implemented naively.
+\end{enumerate}
+The \textbf{manipulability} $w(\theta) = \sqrt{\det(JJ^\top)}$ ($= |l_1 l_2 \sin\theta_2|$ for
+the 2R) measures distance from trouble; MoveIt Servo watches a version of this and scales
+velocity down as $w$ shrinks --- that is the guard rail you will feel when jogging the UR5e
+through a straight-arm pose.
+
+\begin{keyresult}
+Singularity is a property of the \emph{configuration}, not the target. The fix is never
+``push harder'': it is damping (below), path shaping (approach panels with a bent elbow ---
+operator playbook material), or redundancy (a 7th joint, which we don't have).
+\end{keyresult}
+
+\section{Inverse kinematics}
+
+IK inverts FK: given desired $T_d$, find $\theta$. For our arms (and any arm without special
+structure --- see chapter 2's generic-IK guardrail) this is numerical:
+
+\textbf{Newton--Raphson:} iterate
+$\;\theta \leftarrow \theta + J^{+}(\theta)\, e(\theta)\;$ where $e$ is the pose error (twist
+from current to desired) and $J^+$ the pseudoinverse. Fast far from singularities; violent
+near them.
+
+\textbf{Damped least squares (DLS / Levenberg--Marquardt):}
+\begin{equation}
+  \Delta\theta = J^\top\!\left(JJ^\top + \lambda^2 I\right)^{-1} e .
+  \label{eq:dls}
+\end{equation}
+The damping $\lambda$ trades tracking accuracy for bounded joint velocity: as $JJ^\top$ loses
+rank, $\lambda^2 I$ keeps the inverse finite, so near-singular configurations produce slow,
+sane motion instead of a joint-speed spike. This is the ``we damp rather than pretend
+precision'' line from chapter 1, now with its formula. TracIK / KDL / pick\_ik are
+production-grade wrappers around exactly this idea plus restarts and limits handling.
+
+\subsection{Worked example: one NR step, by hand}
+
+2R arm, $l_1 = l_2 = 1$, at $\theta = (0^\circ, 90^\circ)$, tool at $(1, 1)$ by
+\eqref{eq:2rfk}. Target: $(1.2,\, 1.0)$, so $e = (0.2,\, 0)$.
+
+From \eqref{eq:2rjac} with $s_1{=}0, c_1{=}1, s_{12}{=}1, c_{12}{=}0$:
+\[
+  J = \begin{bmatrix} -1 & -1 \\ 1 & 0 \end{bmatrix}, \quad \det J = 1, \quad
+  J^{-1} = \begin{bmatrix} 0 & 1 \\ -1 & -1 \end{bmatrix}, \quad
+  \Delta\theta = J^{-1} e = (0,\; -0.2)\ \text{rad}.
+\]
+New $\theta = (0^\circ,\, 78.54^\circ)$; FK gives $(1.199,\, 0.980)$. The $x$-error is nearly
+closed in one step; $y$ picked up a small error because the step is first-order --- iteration
+exists precisely to mop that up. Two or three more steps converge to sub-millimeter.
+
+\section{Problems}
+
+\begin{problem}
+For the 2R arm at $\theta = (30^\circ, 0^\circ)$ (straight arm), compute $J$ and exhibit a
+Cartesian velocity no $\dot\theta$ can produce.
+\end{problem}
+\begin{answer}
+$s_{12}=s_1=\tfrac12$, $c_{12}=c_1=\tfrac{\sqrt3}2$:
+$J = \begin{bmatrix} -\tfrac12 - \tfrac12 & -\tfrac12 \\ \tfrac{\sqrt3}2 + \tfrac{\sqrt3}2 &
+\tfrac{\sqrt3}2\end{bmatrix}
+   = \begin{bmatrix} -1 & -\tfrac12 \\ \sqrt3 & \tfrac{\sqrt3}2 \end{bmatrix}$;
+columns are parallel (second $=$ first $\times \tfrac12$), $\det J = 0$. Both columns point
+perpendicular to the arm direction $(\cos30^\circ, \sin30^\circ)$; any velocity \emph{along}
+the arm, e.g.\ $v = (\cos30^\circ, \sin30^\circ)$, is unreachable.
+\end{answer}
+
+\begin{problem}
+In the NR worked example, redo the step with DLS \eqref{eq:dls} and $\lambda = 0.5$. Compare
+$\|\Delta\theta\|$ with the undamped step and explain the difference in one sentence.
+\end{problem}
+\begin{answer}
+$JJ^\top = \begin{bmatrix} 2 & -1 \\ -1 & 1\end{bmatrix}$;
+$JJ^\top + 0.25 I = \begin{bmatrix} 2.25 & -1 \\ -1 & 1.25\end{bmatrix}$, inverse
+$= \tfrac{1}{1.8125}\begin{bmatrix}1.25 & 1 \\ 1 & 2.25\end{bmatrix}$. Then
+$(JJ^\top{+}\lambda^2I)^{-1}e = \tfrac{1}{1.8125}(0.25,\, 0.2) = (0.1379, 0.1103)$ and
+$\Delta\theta = J^\top(\cdot) = (-0.1379{+}0.1103,\; -0.1379) = (-0.0276,\, -0.1379)$.
+$\|\Delta\theta\| = 0.141$ vs.\ $0.2$ undamped: damping shrinks (and slightly rotates) the
+step, buying bounded velocity at the cost of extra iterations.
+\end{answer}
+
+\begin{problem}
+The UR5e refused to jog smoothly through a fully-extended pose in MoveIt Servo (you will try
+this). Which mechanism from this chapter is acting, and what are the operator's two escapes?
+\end{problem}
+\begin{answer}
+Servo's singularity scaling: manipulability collapsed at full extension, so it throttles
+Cartesian velocity toward zero. Escapes: re-approach along a direction the arm \emph{can}
+move (perpendicular), or jog in joint space through the singular region and resume Cartesian
+control on the far side. Playbook rule: plan panel approaches with a bent elbow.
+\end{answer}
+
+\begin{problem}[looking ahead to Block C]
+Visual servoing will command tool velocities from image error: $v = -\kappa\, L^{+} e_{img}$.
+Trace the full chain from a pixel error to motor current using the objects defined in
+chapters~\ref{ch:rigid}--\ref{ch:jac} and the interfaces from chapter~\ref{ch:controllers}.
+\end{problem}
+\begin{answer}
+Pixel error $\to$ interaction matrix $L^+$ $\to$ desired camera twist $\to$ (adjoint/frame
+transform, ch.~\ref{ch:rigid}) tool twist $\mathcal V$ $\to$ DLS inverse of $J$
+(ch.~\ref{ch:jac}) $\to$ $\dot\theta$ $\to$ velocity/position commands to the controller
+(ch.~\ref{ch:controllers}) $\to$ driver $\to$ current. Every box is now named; Block C fills
+in $L$.
+\end{answer}

@@ -1,0 +1,118 @@
+\chapter{Forward Kinematics: the Product of Exponentials}
+\label{ch:fk}
+
+Forward kinematics answers: \emph{given joint angles $\theta$, where is the tool?} The URDF
+answers it numerically every time \texttt{robot\_state\_publisher} broadcasts TF; this chapter
+is what that computation actually is. Reference: MR ch.~4.
+
+\section{The formula}
+
+Choose a home configuration (all $\theta_i = 0$) and record $M \in SE(3)$, the tool frame at
+home. For each joint $i$, record its screw axis $\mathcal S_i$ (in the base frame, at home).
+Then
+\begin{equation}
+  T_{\text{base,tool}}(\theta) \;=\;
+  e^{[\mathcal S_1]\theta_1}\, e^{[\mathcal S_2]\theta_2} \cdots e^{[\mathcal S_n]\theta_n}\, M .
+  \label{eq:poe}
+\end{equation}
+Each factor ``turns on'' one joint, in order from base to tip, then $M$ places the tool. For a
+revolute joint through point $q_i$ with axis $\hat\omega_i$:
+$\mathcal S_i = (\hat\omega_i,\; -\hat\omega_i \times q_i)$.
+
+Why PoE and not Denavit--Hartenberg: no frame-assignment ritual, no four-parameter bookkeeping,
+axes read straight off the CAD/URDF, and it composes cleanly with everything in
+chapter~\ref{ch:rigid}. (DH still appears in older papers and UR's own documentation ---
+recognize it, don't adopt it.)
+
+\section{Worked example: the 2R planar arm}
+\label{sec:2r}
+
+Two links, lengths $l_1, l_2$, both joints about $\hat z$, arm along $\hat x$ at home.
+
+\textbf{Setup.} $M = \begin{bmatrix} I & (l_1{+}l_2, 0, 0)^\top \\ 0 & 1\end{bmatrix}$;
+$\mathcal S_1 = (0,0,1;\; 0,0,0)$ (axis through origin);
+joint 2 passes through $q_2 = (l_1, 0, 0)$:
+$v_2 = -\hat z \times q_2 = -(0, l_1, 0)$, so $\mathcal S_2 = (0,0,1;\; 0, -l_1, 0)$.
+
+\textbf{Result} (expanding \eqref{eq:poe}, or by trigonometry):
+\begin{equation}
+  x = l_1\cos\theta_1 + l_2\cos(\theta_1{+}\theta_2), \qquad
+  y = l_1\sin\theta_1 + l_2\sin(\theta_1{+}\theta_2) .
+  \label{eq:2rfk}
+\end{equation}
+
+\textbf{Sanity limits} (always do these): $\theta = (0,0)$ gives $(l_1{+}l_2,\,0)$ — home.
+$\theta = (0, 180^\circ)$ gives $(l_1 - l_2,\, 0)$ — folded back. $\theta = (90^\circ, 0)$
+gives $(0,\, l_1{+}l_2)$ — straight up.
+
+\begin{example}[Numbers]
+$l_1 = l_2 = 1$, $\theta = (30^\circ, 45^\circ)$:
+$x = \cos 30^\circ + \cos 75^\circ = 0.8660 + 0.2588 = 1.1248$;
+$y = \sin 30^\circ + \sin 75^\circ = 0.5 + 0.9659 = 1.4659$.
+\end{example}
+
+\section{The UR5e through this lens}
+
+The UR5e is six revolute joints; its screw axes come from the frame data in
+\texttt{ur\_description} (the \texttt{\_kinematics.yaml} + xacro chain you met in
+chapter~\ref{ch:standin}). Structurally: joint~1 yaws about the base $\hat z$; joints 2, 3, 4
+pitch about parallel $\hat y$-axes (shoulder, elbow, wrist-1 — this parallel-axis triple is
+why the arm has an elegant ``elbow-up/elbow-down'' geometry); joint 5 rolls; joint 6 pitches
+the flange. When mech's arm arrives, our first analytical act will be writing ITS six screw
+axes from the CAD --- the PoE table \emph{is} the kinematic datasheet.
+
+\begin{keyresult}
+The URDF is a serialized PoE model: each \texttt{<joint>}'s \texttt{<origin>} + \texttt{<axis>}
+encode where $q_i$ and $\hat\omega_i$ sit relative to the parent. FK in
+\texttt{robot\_state\_publisher}, planning in MoveIt, and physics in Isaac all consume this
+one description --- which is why URDF correctness (chapter 2's guardrails, mech's CAD export)
+is load-bearing for everything.
+\end{keyresult}
+
+\section{Problems}
+
+\begin{problem}
+For the 2R arm with $l_1 = 0.35$, $l_2 = 0.30$ (our interface-spec proportions), compute the
+tool position at $\theta = (45^\circ, -30^\circ)$.
+\end{problem}
+\begin{answer}
+$\theta_1{+}\theta_2 = 15^\circ$.
+$x = 0.35\cos45^\circ + 0.30\cos15^\circ = 0.2475 + 0.2898 = 0.5373$;
+$y = 0.35\sin45^\circ + 0.30\sin15^\circ = 0.2475 + 0.0776 = 0.3251$.
+\end{answer}
+
+\begin{problem}
+Add a base yaw joint (about $\hat z$ at the origin, but now the 2R plane is vertical: joints
+2, 3 about $\hat y$). Write the three screw axes $\mathcal S_1, \mathcal S_2, \mathcal S_3$ at
+home (arm along $\hat x$).
+\end{problem}
+\begin{answer}
+$\mathcal S_1 = (0,0,1;\,0,0,0)$;
+$\mathcal S_2 = (0,1,0;\, -\hat y \times q_2)$ with $q_2 = 0 \Rightarrow v_2 = 0$ if the
+shoulder sits at the origin, else $q_2=(0,0,h)$ gives $v_2 = -\hat y \times (0,0,h) = (-h,0,0)$;
+$\mathcal S_3 = (0,1,0;\, -\hat y \times (l_1,0,h)) = (0,1,0;\; -h, 0, l_1)$.
+(If you got $v_3 = (\!-h,0,l_1\!)$ check the cross-product order:
+$\hat y \times (l_1,0,h) = (h,\,0,\,-l_1)$, negated $\Rightarrow (-h, 0, l_1)$.) \qedhere
+\end{answer}
+
+\begin{problem}
+Why must the exponentials in \eqref{eq:poe} be multiplied in base-to-tip order? What physical
+statement does swapping $e^{[\mathcal S_1]\theta_1}$ and $e^{[\mathcal S_2]\theta_2}$ make?
+\end{problem}
+\begin{answer}
+Each screw is written in the \emph{home} base frame; turning joint 1 moves joint 2's axis
+through space, and left-multiplication applies that displacement to everything downstream.
+Swapping claims joint 2 rotates about its home axis regardless of joint 1 --- a different
+(wrong) machine. Same reason matrix order mattered in Problem~1.1.
+\end{answer}
+
+\begin{problem}[bridge to practice]
+In RViz you set the UR5e joints to all-zero with \texttt{joint\_state\_publisher\_gui}. The
+arm points straight up, not along $\hat x$. What does that tell you about $M$ in
+\texttt{ur\_description}, and why does it not matter for anything downstream?
+\end{problem}
+\begin{answer}
+UR's home configuration has the arm vertical --- $M$ encodes that choice. PoE is indifferent:
+$M$ is just ``where the tool is at zero.'' Conventions only need to be consistent between the
+description and everything that consumes it --- which the URDF guarantees by construction.
+\end{answer}

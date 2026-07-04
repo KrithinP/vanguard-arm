@@ -1,0 +1,45 @@
+\documentclass[11pt]{book}
+\usepackage{graphicx}
+\usepackage{amsmath,amssymb}
+\usepackage{amsthm}
+\usepackage[hidelinks]{hyperref}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{booktabs}
+
+\lstset{basicstyle=\ttfamily\small, breaklines=true, frame=single,
+        backgroundcolor=\color{gray!8}, showstringspaces=false}
+
+\newenvironment{lesson}
+  {\par\medskip\noindent\begin{minipage}{\linewidth}\itshape\textbf{Lesson.} }
+  {\end{minipage}\medskip\par}
+
+\theoremstyle{definition}
+\newtheorem{example}{Example}[chapter]
+\newtheorem{problem}{Problem}[chapter]
+\newtheorem{keyresult}{Key result}[chapter]
+\newenvironment{answer}
+  {\par\smallskip\noindent\small\textbf{Answer.} }
+  {\par\smallskip}
+
+\title{The Vanguard Arm\\
+  \large Theory, Decisions, and Lessons from a Mars Rover Manipulator\\
+  \normalsize Project Vanguard --- BITS Pilani Hyderabad}
+\author{Krithin Poola \and Claude (documentation \& reference)}
+\date{Started July 2026 --- a living document}
+
+\begin{document}
+\maketitle
+\tableofcontents
+
+\part{The Build Journal}
+\input{chapters/01_why_this_stack}
+\input{chapters/02_standin_arm}
+\input{chapters/03_speaking_to_controllers}
+
+\part{Foundations --- Block A Theory}
+\input{chapters/A1_rigid_body_motion}
+\input{chapters/A2_forward_kinematics}
+\input{chapters/A3_jacobians_ik}
+
+\end{document}

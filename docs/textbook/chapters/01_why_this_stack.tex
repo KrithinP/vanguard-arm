@@ -1,0 +1,95 @@
+\chapter{Why This Stack}
+\label{ch:why}
+
+This book documents the design, theory, and hard lessons of the Vanguard rover arm ---
+manipulation autonomy for the BITS Pilani Hyderabad Mars Rover team, built to win IRC~2027 and
+grow into a research platform. Every chapter is written in the same session the work happened,
+so the reasoning here is what we actually thought, not a cleaned-up retrospective.
+
+\section{The mission, worked backwards}
+
+The arm exists to score points in four competitions (IRC, ARC, ERC, URC) whose manipulation
+tasks --- studied from the primary rulebooks --- collapse into six reusable skills: grasp \&
+carry, panel operations, connector insertion, oriented placement, sampling support, and
+read-\&-report. IRC's IDMO panel (buttons, switches, knobs, a 3-pin plug), ARC's propellant
+hose, ERC's RJ-45, and URC's board connectors are one skill family wearing four costumes. The
+central architectural bet follows: \emph{build skills, not missions}. A new rulebook becomes a
+re-orchestration, not a rebuild.
+
+Two strategy decisions bound everything else:
+\begin{enumerate}
+  \item \textbf{Reliable assisted teleoperation wins IRC 2027; genuine autonomy is the ERC 2027
+  goal.} Top teams win on reliability and operator skill. Autonomy is invested exactly where the
+  rulebook prices it (IRC's RADO delivery: autonomous = 100\% of points, teleoperated = 50\%).
+  \item \textbf{Simulation first.} The physical arm arrives months after work begins. The stack
+  is therefore built against an Isaac Sim digital twin exposing \emph{identical ROS~2
+  interfaces} to the future hardware --- so hardware arrival is an integration event, not a
+  starting gun. This same twin later becomes the benchmark environment of our first paper.
+\end{enumerate}
+
+\section{One mental model}
+\label{sec:mental-model}
+
+A manipulator is a chain of rigid-body transforms in $SE(3)$, and every tool in the stack is
+that one mathematical object viewed differently. The URDF \emph{declares} the chain. TF2
+\emph{broadcasts} it. Forward kinematics \emph{composes} it:
+\[
+  T_{\text{ee}}(\theta) \;=\; e^{[\mathcal{S}_1]\theta_1} e^{[\mathcal{S}_2]\theta_2} \cdots
+  e^{[\mathcal{S}_n]\theta_n}\, M ,
+\]
+the product of exponentials over the joint screw axes $\mathcal{S}_i$ acting on the home pose
+$M$. Inverse kinematics \emph{inverts} it --- nonlinear, multi-solution, and ill-conditioned
+near singularities. The Jacobian \emph{differentiates} it, $\mathcal{V} = J(\theta)\dot\theta$,
+and is why teleop jogging, visual servoing, and singularity handling are the same problem.
+MoveIt~2 \emph{plans} through the chain; \texttt{ros2\_control} \emph{executes} along it; Isaac
+Sim \emph{simulates} it from the same URDF. Ten tools, one idea.
+
+Two consequences we will meet repeatedly:
+\begin{itemize}
+  \item \textbf{Six degrees of freedom is the floor, not a luxury.} Connector insertion
+  requires commanding an arbitrary approach \emph{orientation} at an arbitrary position ---
+   six constraints. A 5-DoF arm can reach the socket but cannot, in general, present the plug
+  square to it.
+  \item \textbf{Singularity is a property of the map, not the motor.} At a straight elbow,
+  $J$ loses rank; some Cartesian velocities become unreachable and naive IK commands explode.
+  We damp (damped least squares) rather than pretend precision the hardware doesn't have.
+\end{itemize}
+
+\section{Infrastructure decisions (recorded before the first line of code)}
+\label{sec:infra}
+
+\begin{description}
+  \item[Platform.] Ubuntu 22.04 + ROS~2 Humble for the IRC season; migration to Jazzy/24.04 is
+  \emph{scheduled} (post-IRC window, Humble EOL May 2027) rather than improvised.
+  \item[Containers.] Development happens in a devcontainer (\texttt{ros:humble-ros-base-jammy});
+  the rover will run a lean L4T-based runtime image on the Jetson. Deployment is
+  \texttt{git pull \&\& docker compose up}, not dependency archaeology at 7\,am in a field.
+  \item[DDS.] CycloneDDS as the team RMW, \texttt{--network=host --ipc=host} on every container,
+  one \texttt{ROS\_DOMAIN\_ID}. This dissolves the classic ``container can't discover the
+  robot'' failure class before anyone hits it.
+  \item[TensorRT engines are built on the device that runs them.] Engines are not portable
+  artifacts; on-rover engine generation is a scripted first-boot step (a lesson inherited
+  directly from the APEX project).
+  \item[Bring-up is native; runtime is containerized.] When a motor doesn't enumerate you want
+  \texttt{dmesg} with zero layers in between. Containers earn their keep once drivers are
+  stable.
+  \item[Compute.] Development and Isaac scenes on a 12\,GB RTX laptop; heavy training
+  (GR00T-class fine-tunes, RL) as containerized batch jobs on the university HPC. The nightly
+  simulation regression runs on the docked laptop.
+\end{description}
+
+\section{Mistakes log, opened early}
+\label{sec:mistakes-ch1}
+
+This section exists in every chapter. Failures are recorded with root causes because they are
+the highest-density teaching material we produce.
+
+\begin{lesson}
+\textbf{The paste-boundary error (day one).} The very first typed file of the project ---
+\texttt{.devcontainer/Dockerfile.dev} --- ended up containing the JSON of
+\texttt{devcontainer.json} pasted below the Dockerfile instructions; the build would have died
+on the first JSON line. Found in review before first build. Root cause: transcribing two
+reference files in one editing pass without a file-boundary check. Rule adopted: after typing
+from reference, \emph{verify each file builds/parses on its own} before moving to the next.
+The same failure family (paste-indent) cost a debugging session on APEX in June 2026.
+\end{lesson}

@@ -1,0 +1,16 @@
+{
+    "name": "vanguard-arm",
+    "build": {
+        "dockerfile": "Dockerfile.dev"
+    },
+    "runArgs": [
+        "--network=host",
+        "--ipc=host",
+        "--volume=/tmp/.X11-unix:/tmp/.X11-unix"
+    ],
+    "containerEnv": {
+        "DISPLAY": "${localEnv:DISPLAY}"
+    },
+    "workspaceFolder": "/ws",
+    "workspaceMount": "source=${localWorkspaceFolder},target=/ws,type=bind"
+}
