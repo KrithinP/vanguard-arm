@@ -204,6 +204,9 @@ You know deep learning; this block is *robot* learning — policies, not percept
   matching action expert` · `SmolVLA asynchronous inference` · `GR00T N1.5 FLARE DreamGen` ·
   `MimicGen data generation SE(3)` · `LeRobot dataset v2 format` · `vision language action model
   evaluation benchmark`
+- **P6-candidate side-thread** (reading only until the Oct hardware gate — PLAN §8):
+  `IKFlow generative inverse kinematics` · `residual learning robot kinematics calibration` ·
+  `learned forward kinematics flexible manipulator` · `robot calibration neural network backlash`
 - ✅ **Ready when:** you can defend P1's experiment table to a reviewer: which baselines
   (classical / ACT / Diffusion Policy / SmolVLA / GR00T-N1.5-finetune), what metrics, how many
   seeds/episodes, and what claim the evidence supports.

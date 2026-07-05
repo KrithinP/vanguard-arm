@@ -12,7 +12,5 @@ graphify-out
 .venv/
 __pycache__/
 
-# not for public repo: session exports + third-party rulebook PDFs (kept on disk, linked in PLAN.md)
+# not for public repo: session exports (kept in AIOS archives)
 docs/textbook/*.txt
-*.pdf
-!docs/textbook/main.pdf

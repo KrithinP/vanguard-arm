@@ -502,6 +502,19 @@ slips — and its artifacts (panel scenes, demo pipeline, evaluation harness) ar
 Phase 0/2 engineering we need anyway. P2's deadline (~1 Mar) sits between IRC and ARC; the paper
 is drafted in Feb from IRC data.
 
+**P6 (conditional, added 2026-07-05) — "Learned residual kinematics for imprecise field
+manipulators."** Student-built arms lie about themselves: backlash, link flex, CAD-vs-reality
+offsets mean the URDF's FK is wrong where it matters (insertion-grade precision at the wrist).
+Candidate contribution: a small residual network that corrects nominal kinematics from
+self-collected data (wrist-tag tracking / known-point touching), evaluated by task-level
+precision recovery (insertion success) on the real Vanguard arm. Rides Phase-1 calibration work
+we must do anyway; plugs into P3 as a sibling or section. **Decision gate: October 2026, with
+mech's arm measured** — if the arm is precise, the paper evaporates (fine); if it flexes, the
+experiments are the calibration campaign. Hard constraints: never competes with P1's December
+deadline; classical calibration remains the shipping path for IRC (paper is the ablation, not
+the dependency). NOT a plain "neural IK" reimplementation (IKFlow-class methods are published;
+6-DoF arms don't need them — the novelty is the imprecise-hardware angle + field validation).
+
 ### Rules of the program
 
 - **Faculty advisor is a blocker — resolve by Aug 2026.** Needed for arXiv endorsement,

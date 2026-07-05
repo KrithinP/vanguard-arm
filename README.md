@@ -10,11 +10,13 @@
 ![Isaac Sim](https://img.shields.io/badge/Isaac_Sim-5.1.0-76B900?logo=nvidia&logoColor=white)
 ![Isaac Lab](https://img.shields.io/badge/Isaac_Lab-2.3.2-76B900?logo=nvidia&logoColor=white)
 ![Ubuntu](https://img.shields.io/badge/Ubuntu-22.04-E95420?logo=ubuntu&logoColor=white)
-![Phase](https://img.shields.io/badge/Phase-0%3A_sim--first_foundation-blue)
+![Phase](https://img.shields.io/badge/Phase-0c%3A_panel_scene_%26_skills-blue)
 
-<img src="docs/media/demo.gif" width="850" alt="Two-waypoint trajectory executing on the UR5e stand-in — commanded by a raw FollowJointTrajectory action client, no MoveIt in the loop"/>
+<img src="docs/media/isaac_demo.gif" width="850" alt="UR5e digital twin executing a trajectory in Isaac Sim, commanded through ros2_control from an unmodified action client"/>
 
-*Day 2: a hand-built `FollowJointTrajectory` client drives the arm — no MoveIt in the loop.*
+*Day 4: the same 50-line trajectory script that drove mock hardware on day 2 — now driving
+NVIDIA Isaac Sim physics, unmodified, through `topic_based_ros2_control`. One interface, two
+bottoms; the real arm becomes the third in September.*
 
 </div>
 
@@ -60,6 +62,9 @@ software won't be waiting on it.
 |---|---|
 | <img src="docs/textbook/figures/ch02_first_plan.png" width="420"/> | **First motion plan** — UR5e on mock hardware, MoveIt interactive marker, planned & executed inside the devcontainer. |
 | <img src="docs/textbook/figures/ch03_trajectory_filmstrip.png" width="420"/> | **First raw trajectory** — two waypoints through the action interface directly; timing experiments + the joint-limit experiment that earned two safety design rules. |
+| <img src="docs/textbook/figures/ch04_isaac_first_command.png" width="420"/> | **Digital twin's first command** — Isaac Sim 5.1 UR5e obeying a hand-published ROS 2 `JointState`; 60 Hz joint-state bridge over CycloneDDS. |
+| <img src="docs/textbook/figures/ch05_full_stack.png" width="420"/> | **The full stack, alive** — viewport + the OmniGraph wiring (publish/subscribe/articulation nodes) + stage tree, mid-trajectory. `error_code=0` end to end. |
+| <img src="docs/media/demo.gif" width="420"/> | **Where it started (day 2)** — the same script against mock hardware in RViz. |
 
 ## 📖 The Textbook
 
@@ -67,9 +72,11 @@ Everything we learn — theory, worked math, design decisions, and **every mista
 root cause** — goes into a living LaTeX book: [`docs/textbook/`](docs/textbook/)
 (build: `tectonic main.tex`).
 
-Current contents: *Part I — Build Journal* (why this stack · the stand-in arm · speaking to
-controllers) + *Part II — Foundations* (rigid-body motion · product-of-exponentials FK ·
-Jacobians, singularities & IK — with worked examples and problem sets).
+Current contents — *Part I, Build Journal*: why this stack · the stand-in arm · speaking to
+controllers · the digital twin breathes · one interface, three bottoms. *Part II, Foundations*:
+rigid-body motion · product-of-exponentials FK · Jacobians, singularities & IK — worked
+examples and problem sets throughout. **14 labeled mistakes with root causes so far** — the
+book's most valuable section.
 
 ## 🚀 Quickstart
 
@@ -85,12 +92,18 @@ ros2 launch ur_moveit_config ur_moveit.launch.py ur_type:=ur5e \
 
 # or skip MoveIt and speak to the controller yourself
 python3 ros2_ws/src/scripts/send_trajectory.py
+
+# — OR drive Isaac Sim physics with the SAME script —
+# host: ~/launch_isaac.sh → open ros2_ws/isaac/VanguardArm.usd → Play
+# container:
+ros2 launch vanguard_isaac_control isaac_control.launch.py   # terminal 1
+python3 ros2_ws/src/scripts/send_trajectory.py               # terminal 2 (unmodified!)
 ```
 
 ## 🗺️ Roadmap
 
 - [x] **Phase 0a** — devcontainer · UR5e stand-in · MoveIt pipeline · raw action client
-- [ ] **Phase 0b** — Isaac Sim digital twin ↔ ROS 2 bridge *(in progress)*
+- [x] **Phase 0b** — Isaac Sim digital twin ↔ ROS 2 bridge — `send_trajectory.py` runs unmodified against Isaac physics via `topic_based_ros2_control`
 - [ ] **Phase 0c** — IDMO panel scene · teleop UI · six skill stubs · LeRobot data pipeline
 - [ ] **Phase 1** — hardware bring-up (mech arm arrives ~Sept)
 - [ ] **Phase 2** — IRC 2027 campaign 🏆
