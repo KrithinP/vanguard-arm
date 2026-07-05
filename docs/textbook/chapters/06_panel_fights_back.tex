@@ -1,0 +1,85 @@
+\chapter{The Panel Fights Back}
+\label{ch:panel}
+
+\section{What was built}
+
+The first piece of competition furniture: \texttt{/World/IDMOPanel} --- a kinematic board
+carrying a spring-return push button (prismatic joint, 8\,mm travel, drive-as-spring) and a
+toggle switch (revolute, $\pm25^\circ$) --- generated \emph{procedurally} by
+\texttt{ros2\_ws/isaac/build\_panel.py}. Procedural matters: a scripted panel is a
+randomizable panel, and randomization is the P1 benchmark's core requirement. The build took
+one evening; making the \emph{arm and panel coexist} took the rest of it, and taught more
+than the build did.
+
+\section{Interactive elements are tiny robots}
+
+A button is a 1-DoF machine: body + prismatic joint + drive whose stiffness plays the return
+spring; ``pressed'' is a joint-position threshold, readable from simulation state exactly like
+an arm joint. The switch is the same idea rotated: revolute + hard limits + light damping so
+it rests where flipped. Success detection for the whole IDMO skill family will be \emph{joint
+and pose queries on the panel}, not vision tricks --- the simulator gives us ground truth for
+free.
+
+\section{The debugging ledger}
+
+\begin{lesson}
+\textbf{A wall is not a rigid body on a joint.} Panel v0 anchored the board with a
+\texttt{FixedJoint} carrying \emph{no anchor frames}; on Play, PhysX welded board-origin to
+world-origin with whatever relative pose it derived --- the board pivoted into a fallen-sail
+pose. v0.1 rule: immovable scenery is a \emph{kinematic rigid body} (infinite mass, still
+collidable), no joint to the world at all. Joints are for things that move.
+\end{lesson}
+
+\begin{lesson}
+\textbf{Joint anchors live in scaled local frames.} \texttt{UsdPhysics} joint
+\texttt{localPos} is expressed in the body's local frame \emph{and multiplied by the prim's
+scale}. Anchors tuned under the earlier half-scale bug pointed nowhere after the scale fix ---
+elements snapped to phantom seats. v0.1 writes anchors in pre-scale units with the arithmetic
+in comments, so the next reader can check the numbers instead of trusting them.
+\end{lesson}
+
+\begin{lesson}
+\textbf{The controller never forgets, and now the workspace has furniture.} The JTC holds its
+last commanded pose indefinitely. The moment a solid panel occupied the arm's old sweep path,
+every Play cycle made the arm lunge \emph{through} the board (PhysX resolving interpenetration
+looks exactly like ``an impossible state''). Disciplines adopted: park the arm at a home pose
+before Stop/Play cycles; audit stored trajectories when the scene changes; and ---
+the real fix, next chapter --- collision-aware planning, which is what MoveIt is \emph{for}.
+\end{lesson}
+
+\begin{lesson}
+\textbf{Strict tolerances block rescues too.} Escaping the panel kept aborting: the arm
+physically could not track the commanded path while grinding against geometry, and our
+freshly-installed 0.2\,rad path tolerance --- working exactly as designed --- kept pulling the
+plug mid-rescue. Escape choreography that worked: rotate \emph{away} from the obstacle sector
+first (free axis), \emph{then} fold home. A safety system that also constrains recovery is a
+feature to design around, not a bug to loosen.
+\end{lesson}
+
+\begin{lesson}
+\textbf{Kill your processes by evidence, not by faith.} The ``dead'' control node wasn't; a
+relaunch stacked a second controller manager onto the first (symptom: \emph{``cannot be
+configured from `active' state''}), and three zombie \texttt{robot\_state\_publisher}s from
+successive launches were still publishing. Rules: after any kill, verify with
+\texttt{pgrep -fa}; before any launch, know what is already running. Dueling controller
+managers produce Kafkaesque symptoms --- goals accepted by one, hardware owned by another.
+\end{lesson}
+
+\begin{lesson}
+\textbf{Springs need dampers: read the asset's numbers.} The arm drifted between goals,
+overshot every motion, and failed tolerances on a different joint each attempt. The
+$\times10$-and-print diagnostic revealed the UR5e asset ships position drives with stiffness
+$\sim10^4$ but damping $\sim0.06$--$4$ --- a nearly undamped oscillator. Setting damping to
+$5\%$ of stiffness (thousands, not units) gave crisp, dead-beat motion and the first
+\texttt{SUCCEEDED} home. Meta-rule: when tracking is mysteriously sloppy, print the drive
+gains before theorizing --- and prefer diagnostics that \emph{report} state over ones that
+just mutate it.
+\end{lesson}
+
+\section{Where this leaves us}
+
+Arm parked at a tuned home; panel functional (button cycles under its drive, switch rests at
+its detents); every joint drive in the scene now has explicit, recorded gains. The arm's tool
+flange spent part of the evening accidentally resting on the red button --- an unplanned
+preview of the next chapter, where MoveIt plans a deliberate, collision-aware press of the
+same button. First accidental contact: 5~July. First intentional press: next session's goal.

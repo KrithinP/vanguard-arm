@@ -28,7 +28,7 @@ class TrajectoryClient(Node):
         p1.positions= [0.0,-1.57,0.0,-1.57,0.0,0.0]# home ish
         p1.time_from_start=Duration(sec=4)
         p2=JointTrajectoryPoint()
-        p2.positions= [1.6, -0.5, 1.8, -2.5, -1.2, 0.9]# dramatic sweep - unmissable, all joints legal
+        p2.positions= [-1.0, -0.5, 1.8, -2.5, -1.2, 0.9]# dramatic sweep AWAY from the panel side (+X is panel territory)
         p2.time_from_start=Duration(sec=8)
         traj.points=[p1,p2]
 
