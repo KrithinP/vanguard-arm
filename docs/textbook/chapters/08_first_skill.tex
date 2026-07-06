@@ -1,0 +1,54 @@
+\chapter{The First Skill}
+\label{ch:skill}
+
+\section{The mouse, replaced}
+
+\texttt{press\_button.py} (via \texttt{pymoveit2}, MoveIt's community Python bindings for
+Humble) performs the full IDMO button operation programmatically: publish the board as a
+collision box, free-plan to a hover pose, straight-line approach to contact, hold, straight-line
+retreat. Sixty lines. Every future skill --- switch, knob, plug, drawer --- is a variation on
+this skeleton, and the skeleton took three bugs to straighten. Each bug rewrote a coordinate or
+a flag; all three rewrote our understanding.
+
+\section{Three bugs, three truths}
+
+\begin{lesson}
+\textbf{Scripts have no velocity slider.} The RViz runs were tame because a human had set
+velocity scaling to 0.10; the script's first run used MoveIt's default (full speed), the sim
+arm lagged the trajectory beyond the 0.2\,rad path tolerance, and every leg ABORTED mid-motion
+--- while \emph{appearing} to work, because successive aborted stubs inched the arm along.
+Fix: \texttt{max\_velocity = max\_acceleration = 0.1} in the skill itself. Truth: every safety
+setting a human sets in a GUI must be re-set, explicitly, in code --- the API starts from
+defaults, not from your habits.
+\end{lesson}
+
+\begin{lesson}
+\textbf{Accurate tracking exposes dishonest coordinates.} With speed fixed, the press stopped
+short --- because the original \texttt{PRESS} depth had only ever ``worked'' via sloppy
+overshoot and the unmodeled gripper's early contact. The planner had been reasoning about a
+bare flange while PhysX simulated a gripper the URDF never mentioned: two robots, one name.
+Resolution: delete the gripper from the Isaac asset until a gripper exists in \emph{both}
+models. Truth: \emph{the planning model and the simulation model must be the same robot} ---
+any mismatch turns every calibrated number into a lie with a delay.
+\end{lesson}
+
+\begin{lesson}
+\textbf{Identical failure points mean a wall, not a number.} Deepening the target by 17\,mm
+moved the stop point by zero --- the signature of a constraint, not a miscalibration: MoveIt's
+cartesian planner silently \emph{truncates} paths at the first collision (wrist vs.\ the box's
+1\,cm safety skin), executing the truncated stub without complaint. Fix:
+\texttt{cartesian\_avoid\_collisions = False} --- for the contact legs only. The travel leg
+keeps full checking. Truth, and the permanent shape of every contact skill: \textbf{travel
+safely, touch intentionally.}
+\end{lesson}
+
+\section{What the skill still cannot do}
+
+Score itself. The blocked-spring press correctly reports ABORTED (the goal is unreachable
+\emph{by design} --- the button bottoms out first), so the controller's verdict is useless as a
+success signal; meanwhile the true answer sits in the button's own joint
+(\texttt{state:linear:physics:position} $\approx 0.008$), visible only inside Isaac. The skill
+that cannot read its own effect needs a human priest to interpret the simulator. Chapter 9
+gives the button a voice on the ROS graph --- after which \texttt{press\_button} can servo to
+effect instead of faith, hand-calibrated depths stop mattering, and P1's benchmark gains its
+automatic grader. Contact tasks want feedback, not coordinates.
