@@ -64,6 +64,7 @@ software won't be waiting on it.
 | <img src="docs/textbook/figures/ch03_trajectory_filmstrip.png" width="420"/> | **First raw trajectory** — two waypoints through the action interface directly; timing experiments + the joint-limit experiment that earned two safety design rules. |
 | <img src="docs/textbook/figures/ch04_isaac_first_command.png" width="420"/> | **Digital twin's first command** — Isaac Sim 5.1 UR5e obeying a hand-published ROS 2 `JointState`; 60 Hz joint-state bridge over CycloneDDS. |
 | <img src="docs/textbook/figures/ch05_full_stack.png" width="420"/> | **The full stack, alive** — viewport + the OmniGraph wiring (publish/subscribe/articulation nodes) + stage tree, mid-trajectory. `error_code=0` end to end. |
+| <img src="docs/media/first_press.gif" width="420"/> | **First deliberate IDMO operation (day 5)** — MoveIt plans a collision-aware path around the panel; PhysX compresses the spring-loaded button; the button's own joint state certifies the press (~8 mm). |
 | <img src="docs/media/demo.gif" width="420"/> | **Where it started (day 2)** — the same script against mock hardware in RViz. |
 
 ## 📖 The Textbook
@@ -75,7 +76,7 @@ root cause** — goes into a living LaTeX book: [`docs/textbook/`](docs/textbook
 Current contents — *Part I, Build Journal*: why this stack · the stand-in arm · speaking to
 controllers · the digital twin breathes · one interface, three bottoms. *Part II, Foundations*:
 rigid-body motion · product-of-exponentials FK · Jacobians, singularities & IK — worked
-examples and problem sets throughout. **14 labeled mistakes with root causes so far** — the
+examples and problem sets throughout. **24 labeled mistakes with root causes so far** — the
 book's most valuable section.
 
 ## 🚀 Quickstart
@@ -104,7 +105,7 @@ python3 ros2_ws/src/scripts/send_trajectory.py               # terminal 2 (unmod
 
 - [x] **Phase 0a** — devcontainer · UR5e stand-in · MoveIt pipeline · raw action client
 - [x] **Phase 0b** — Isaac Sim digital twin ↔ ROS 2 bridge — `send_trajectory.py` runs unmodified against Isaac physics via `topic_based_ros2_control`
-- [ ] **Phase 0c** — IDMO panel scene · teleop UI · six skill stubs · LeRobot data pipeline
+- [ ] **Phase 0c** *(in progress)* — IDMO panel v0.2 ✓ (procedural, spring button + toggle switch) · JTC goal tolerances ✓ · first MoveIt collision-aware button press ✓ · next: `press_button` skill as code, teleop, LeRobot pipeline
 - [ ] **Phase 1** — hardware bring-up (mech arm arrives ~Sept)
 - [ ] **Phase 2** — IRC 2027 campaign 🏆
 - [ ] Beyond — ARC · ERC (autonomous maintenance) · URC · 5 papers
