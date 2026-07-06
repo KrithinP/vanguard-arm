@@ -61,5 +61,5 @@ sdrv = UsdPhysics.DriveAPI.Apply(sj.GetPrim(), "angular")
 sdrv.CreateStiffnessAttr().Set(0.0)
 sdrv.CreateDampingAttr().Set(0.5)
 
-print("IDMO panel v0.2 built (lowered):", PANEL)
+print("IDMO panel v0.3 built (articulation):", PANEL)
 

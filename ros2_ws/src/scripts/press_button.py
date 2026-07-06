@@ -10,9 +10,8 @@ UR_JOINTS = ["shoulder_pan_joint", "shoulder_lift_joint", "elbow_joint",
              "wrist_1_joint", "wrist_2_joint", "wrist_3_joint"]
 
 BOARD_POS, BOARD_SIZE = [0.55, 0.0, 0.72], [0.62, 0.03, 0.42]  # true size + 1cm skin (press config must stay outside)
-HOVER = [0.43, -0.09, 0.82]        # 6 cm off the button face
-PRESS = [0.43, -0.021, 0.82]       # flange 1mm past full button travel (face -0.03 + 8mm): full squeeze, block absorbs
-QUAT_FACE_PANEL = [-0.7071, 0.0, 0.0, 0.7071]  # tool +Z along world +Y
+# NOTE: all motion legs are joint-space between demonstrated configs (see textbook ch.9).
+# Pose targets return only when perception drives them (panel pose estimation, Phase 0d+).
 STAGING = [5.637, -0.408, -1.041, 4.59, 0.646, 0.0]  # HARVESTED hover (2026-07-07): captured beats composed
 PRESS_CFG = [5.7086, -0.4042, -1.0772, 4.6228, 0.5743, -0.0001]  # hover + 1.10 x (harvested 3mm-contact delta): computed full-press config
 
@@ -48,13 +47,18 @@ def main():
     moveit2.add_collision_box(id="panel_board", size=BOARD_SIZE,
                               position=BOARD_POS, quat_xyzw=[0, 0, 0, 1])
 
-    node.get_logger().info("2/4 moving to hover config (joint-space: no IK lottery, collision-checked)")
-    moveit2.move_to_configuration(STAGING)
-    moveit2.wait_until_executed()
+    def leg(desc, cfg):
+        """One motion leg. A skill that continues after a failed leg is a hope, not a skill."""
+        node.get_logger().info(desc)
+        moveit2.move_to_configuration(cfg)
+        ok = moveit2.wait_until_executed()
+        if not ok:
+            node.get_logger().error(f"LEG FAILED: {desc} - aborting skill")
+            rclpy.shutdown()
+            raise SystemExit(2)
 
-    node.get_logger().info("3/4 pressing (joint-space hop between proven configs)")
-    moveit2.move_to_configuration(PRESS_CFG)
-    moveit2.wait_until_executed()
+    leg("2/4 moving to hover config (joint-space: no IK lottery, collision-checked)", STAGING)
+    leg("3/4 pressing (joint-space hop between proven configs)", PRESS_CFG)
 
     node.get_logger().info("   holding 2 s on the button")
     import time; time.sleep(2.0)
@@ -66,9 +70,7 @@ def main():
     else:
         node.get_logger().error(f"PRESS FAILED: button at {depression*1000:.1f} mm (config: {cfg})")
 
-    node.get_logger().info("4/4 retreating to hover (joint-space)")
-    moveit2.move_to_configuration(STAGING)
-    moveit2.wait_until_executed()
+    leg("4/4 retreating to hover (joint-space)", STAGING)
 
     node.get_logger().info("press_button: DONE")
     rclpy.shutdown()

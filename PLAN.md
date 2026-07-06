@@ -323,7 +323,8 @@ A→Phase 0, B→Phase 1, C→Phase 2, D→P1 paper sprint) and closes with its 
   rulebook dimensions.
 - MoveIt 2 up on the sim arm: planning scene, Pilz Cartesian moves, moveit_servo jogging.
 - Skill framework: BehaviorTree.CPP scaffolding + the six skills (§2.3) as stubs; grasp & place
-  working in sim.
+  working in sim. **Execution detail for the rest of Phase 0: `TASKS.md` (S1–S7, cold-executable);
+  P1 experiment design frozen in `research/p1/DESIGN.md` (2026-07-07).**
 - Operator station v0: Foxglove + gamepad teleop of sim arm; measure operator task times from day
   one (baseline metric).
 - Team: recruit + onboard the arm autonomy squad (§9); Isaac learning path (§7) starts now.

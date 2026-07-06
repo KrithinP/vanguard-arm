@@ -33,8 +33,9 @@ at knowledge, don't paste it.
   and install per-project rather than globally when trialing.
 - **Skills we should WRITE ourselves** (with `skill-creator` from `anthropics/skills`), once the
   pattern repeats 3+ times (AIOS Default-Shift rule):
-  - `ros2-debug` — our runbook: colcon failures, QoS mismatches, TF tree issues, node graph
-    checks. Codifies Block-A2 knowledge so debugging stops costing fresh tokens each time.
+  - ~~`ros2-debug`~~ **DONE 2026-07-07** — folded into `bug-hunter`'s local annex
+    (`.claude/skills/bug-hunter/SKILL.md`): the debug ladder + standing truths from the
+    Vanguard Phase-0 sessions.
   - `mission-rehearsal` — spins up the scoring spreadsheet, shot-clock pacing rules (10/20-min
     IRC gates), and rehearsal log template.
   - `rulebook-diff` — old PDF + new PDF → task-relevant delta (each competition, each season).
