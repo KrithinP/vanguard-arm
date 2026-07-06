@@ -8,9 +8,13 @@ Venue: RA-L (rolling) primary; Space Robotics Workshop @ ICRA 2027 fallback.
 ## The claim structure (what the paper must be able to say)
 1. We release a reproducible panel-servicing benchmark (standard UR5e, procedural IRC-style
    panel, ground-truth scoring from the panel's own joint states) — the *artifact* claim.
-2. On it, we measure where the current policy ladder (BC→ACT→Diffusion→VLA fine-tunes) sits
-   relative to a scripted expert under distribution shift (layout/visual randomization) —
-   the *finding* claim. Honest negative results are a valid finding.
+2. On it, we measure where the current policy ladder (BC→ACT→Diffusion→VLA fine-tunes→**VLA+RL
+   post-training**) sits relative to a scripted expert under distribution shift — the *finding*
+   claim. Honest negative results are a valid finding.
+3. Positioning vs the evaluation crisis (RoboArena/RobotArena∞ critique of sim benchmarks):
+   scoring by world-state predicates (objective, contamination-resistant), held-out procedural
+   seeds published, and a declared real-arm twin (P2) as the real-world leg. We're not another
+   sim benchmark; we're the effect-grounded one with a field roadmap.
 
 ## Why we win this niche (from PLAN §8, restated for the intro)
 VLAs are trained/evaluated on tabletop lab manipulation; panel servicing for planetary rovers
@@ -46,12 +50,14 @@ human-style variation. Budget: 2k generated + ≥100 teleop episodes per task.
 | ACT | small-data champion |
 | Diffusion Policy | strongest classical learner |
 | SmolVLA fine-tune | the accessible VLA |
+| **SmolVLA + RL post-training** (SimpleVLA-RL recipe) | **the 2026 wave; our grader IS the reward — zero reward engineering** |
 | GR00T N1.5 fine-tune | the flagship VLA (HPC) |
 
 ## Protocol
 Train on T0+T1 data; evaluate all rungs on T0/T1/T2 × 100 held-out layouts × 3 seeds.
 Report: success rate (with Wilson CIs), time-to-success, panel-collision rate (any non-target
-contact force event). Ablations (pick ≤2 by time): generated-vs-teleop data mix; episodes-count
+contact force event), **and press-force profiles from PhysX — force-aware metrics even for
+vision-only policies (the ForceVLA-wave gap our benchmark fills; see RESEARCH-RADAR §2)**. Ablations (pick ≤2 by time): generated-vs-teleop data mix; episodes-count
 scaling curve. Everything logged to W&B project `vanguard-p1`; eval harness = one script that
 prints the paper's main table.
 
@@ -71,5 +77,5 @@ prints the paper's main table.
 - **Nov 20–Dec 10:** write; figures via `dataviz` skill; internal red-team pass with
   `honest-advisor` framing ("what would a reviewer kill this for").
 - **Dec 10–15:** advisor pass, polish, submit + arXiv.
-- **Cut lines if late (in order):** GR00T rung → T2 tier → 2nd ablation. The benchmark +
+- **Cut lines if late (in order):** RL rung → GR00T rung → T2 tier → 2nd ablation. The benchmark +
   expert + ≥3 rungs is still a paper; a late everything is not.

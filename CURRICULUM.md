@@ -1,6 +1,8 @@
 # Vanguard Arm — Study Curriculum (Jul 2026 → IRC, Jan 2027)
 
-Companion to `PLAN.md`. Rule R2 (theory-before-phase) runs on this document: each block gates a
+Companion to `PLAN.md`. **For the intensive study sprint + oral-exam mastery standard, use
+`STUDY-GUIDE.md` (2026-07-07) — it sequences and prioritizes; this file holds the full source
+URLs, search keywords, and phase gates.** Rule R2 (theory-before-phase) runs on this document: each block gates a
 build phase, and the "you're ready when" checks are the gate. Budget **6–8 h/week** alongside the
 build — theory studied the same week you build the thing sticks 10× better than front-loading.
 
