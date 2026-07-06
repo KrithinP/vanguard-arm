@@ -1,4 +1,5 @@
-# IDMO panel v0.2 — lowered for floor-mounted stand-in reach (true height returns with Phase-1 rover deck)
+# IDMO panel v0.3 — now a fixed-base ARTICULATION (board welded to world, ArticulationRootAPI on the
+# fixed joint, UR-asset pattern) so PhysX exposes button/switch joint states to the ROS2 bridge (Task 9).
 from pxr import Usd, UsdGeom, UsdPhysics, Gf
 import omni.usd
 
@@ -20,8 +21,14 @@ def cube(path, size, pos, color):
 
 # board: kinematic (immovable, collidable), center z=0.72
 board = cube(f"{PANEL}/board", (0.6, 0.02, 0.4), (0.55, 0.0, 0.72), (0.35, 0.35, 0.4))
-rb = UsdPhysics.RigidBodyAPI.Apply(board)
-rb.CreateKinematicEnabledAttr().Set(True)
+UsdPhysics.RigidBodyAPI.Apply(board)
+# fixed-base articulation: weld board->world WITH explicit anchors (the v0 bug, done right),
+# ArticulationRootAPI on the joint = same convention as the UR5e's root_joint
+fix = UsdPhysics.FixedJoint.Define(stage, f"{PANEL}/board_fix")
+fix.CreateBody1Rel().SetTargets([board.GetPath()])
+fix.CreateLocalPos0Attr().Set(Gf.Vec3f(0.55, 0.0, 0.72))   # world-frame anchor = board center
+fix.CreateLocalPos1Attr().Set(Gf.Vec3f(0.0, 0.0, 0.0))     # board-local anchor = its origin
+UsdPhysics.ArticulationRootAPI.Apply(fix.GetPrim())
 
 # push button: prismatic, 8mm travel, spring return — now at z=0.82
 btn = cube(f"{PANEL}/button", (0.04, 0.02, 0.04), (0.43, -0.02, 0.82), (0.8, 0.1, 0.1))

@@ -1,0 +1,77 @@
+\chapter{The Skill Learns to See, and Stops Gambling}
+\label{ch:verify}
+
+\section{Task 9: the button gets a voice}
+
+The panel became a proper articulation (fixed-base pattern: board welded to world by an
+anchored \texttt{FixedJoint} carrying the \texttt{ArticulationRootAPI} --- the UR asset's own
+convention, and this time with the anchors the v0 board never had). A second \emph{ROS2
+Publish Joint State} node in the action graph, targeted at that root, put
+\texttt{/panel\_joint\_states} on the wire at 60\,Hz: the button and switch, reporting
+themselves. \texttt{press\_button.py} grew a subscription and one judgment:
+\texttt{button\_joint > 0.006} $\Rightarrow$ \texttt{PRESS VERIFIED}, else \texttt{PRESS
+FAILED} --- with the measured millimeters either way. The skill now scores by \emph{effect},
+not by controller verdicts (which a blocked spring makes structurally useless) or by faith.
+
+Incidental physics, kept: the switch drifts slowly toward a joint limit under gravity and
+stays --- switches \emph{holding state} is their job, and the drift is a free reminder that
+un-sprung mechanisms remember.
+
+\section{The instrument immediately catches three silent failures}
+
+Within an hour of existing, the verifier caught: a 3.7\,mm press (visibly ``fine''), a
+0.0\,mm non-press (the arm orbited the panel instead), and a 3.0\,mm contact that \emph{looked}
+pressed to the human eye. Three runs a human would have shrugged at, three honest red lines.
+Nothing built this week has paid for itself faster.
+
+\section{The determinism war}
+
+Chasing those failures uncovered a stack of gambling machines hiding inside ``move to pose'':
+
+\begin{lesson}
+\textbf{A pose goal is an IK lottery.} The UR has eight inverse-kinematics branches per tool
+pose. \texttt{move\_to\_pose} may land in any of them: one run's hover matched the previous
+configuration, the next run's took a 31-second grand tour to a flipped wrist --- from which
+the subsequent contact motion behaved completely differently. Poses do not pin robots;
+configurations do.
+\end{lesson}
+
+\begin{lesson}
+\textbf{The cartesian path service is moody near wrapped joints.} From the \emph{same} start
+configuration it variously returned full paths (8\,mm press), partial fractions (3--4\,mm),
+or failed outright --- upon which pymoveit2 silently fell back to a free OMPL plan (the
+``full round around the panel'' run). A service that degrades silently into a different
+planner is two gambling machines in a trench coat.
+\end{lesson}
+
+\begin{lesson}
+\textbf{Captured beats composed.} A staging configuration invented from intuition failed
+planning in 14\,ms --- goal in collision. The replacement was \emph{harvested}: read
+\texttt{/joint\_states} at a proven hover, bake the numbers in. Likewise the press
+configuration was not derived from geometry but \emph{computed from a captured contact}: the
+verifier's failed 3\,mm run supplied a contact configuration, and extending the
+hover$\to$contact joint delta by 10\% (hard stop absorbing the excess) gave the full-press
+config. Two demonstrations, one extrapolation, zero invented numbers.
+\end{lesson}
+
+\section{Final form, and what it converged to}
+
+\begin{center}
+scene box $\to$ \texttt{move\_to\_configuration}(hover) $\to$
+\texttt{move\_to\_configuration}(press) $\to$ verify by \texttt{/panel\_joint\_states} $\to$
+\texttt{move\_to\_configuration}(hover)
+\end{center}
+
+Every leg a joint-space hop between demonstrated configurations; poses and cartesian services
+gone; 3--5 seconds per cycle; presses \emph{every} time. The week's deepest pattern, named:
+the skill converged on \textbf{demonstration and replay, verified by effect} --- capture
+working states, move between them deterministically, measure the world to confirm. Which is,
+one abstraction up, precisely what the LeRobot/P1 pipeline does with learned policies instead
+of fixed configs. The first skill and the research program arrived at the same idea from
+opposite ends; that is usually the sign the idea is real.
+
+Caveats owned: baked configurations are brittle to the panel \emph{moving} (fine --- the
+competition panel is fixed per attempt; re-teaching is a 30-second harvest), and the approach
+generalizes per-element (each panel control gets its taught pair). Perception-driven pose
+estimation re-enters later --- as the thing that \emph{finds} the panel, not the thing that
+executes the press.
